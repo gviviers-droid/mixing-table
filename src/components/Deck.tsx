@@ -2,6 +2,7 @@ import type { ChangeEvent } from "react";
 import type { DeckId } from "../audio/types";
 import { useMixerStore } from "../state/mixerStore";
 import { formatTime } from "../utils/formatTime";
+import { CompressorPanel } from "./CompressorPanel";
 import { EQPanel } from "./EQPanel";
 import { FilterPanel } from "./FilterPanel";
 import { Waveform } from "./Waveform";
@@ -18,6 +19,7 @@ export function Deck({ deckId }: DeckProps) {
   const seek = useMixerStore((s) => s.seek);
   const setEQ = useMixerStore((s) => s.setEQ);
   const setFilter = useMixerStore((s) => s.setFilter);
+  const setCompressor = useMixerStore((s) => s.setCompressor);
   const setDeckVolume = useMixerStore((s) => s.setDeckVolume);
 
   const hasTrack = deck.source === "local";
@@ -90,6 +92,12 @@ export function Deck({ deckId }: DeckProps) {
         filter={deck.filter}
         disabled={!hasTrack}
         onChange={(filter) => setFilter(deckId, filter)}
+      />
+      <CompressorPanel
+        compressor={deck.compressor}
+        reduction={deck.compressorReduction}
+        disabled={!hasTrack}
+        onChange={(compressor) => setCompressor(deckId, compressor)}
       />
 
       <label className="file-input">

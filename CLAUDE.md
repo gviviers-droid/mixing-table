@@ -6,9 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 A browser-based two-deck music mixer ("mixing-table") for local audio
 files. Deck A and Deck B each play a locally-loaded file through a 3-band
-EQ and low/high-pass filter; a crossfader blends between them. A playlist
-panel lets you preload files ahead of time and send them into either deck
-with an instant cut or a real overlapping crossfade.
+EQ, low/high-pass filter, and compressor/limiter; a crossfader blends
+between them. A playlist panel lets you preload files ahead of time and
+send them into either deck with an instant cut or a real overlapping
+crossfade.
 
 There is no streaming source (Apple Music/MusicKit was removed - see git
 history if you need to resurrect it) - every deck is backed by a decoded
@@ -33,7 +34,14 @@ Everything lives under one `AudioContext` (`src/audio/AudioEngine.ts`):
 two deck bus `GainNode`s (A/B) feed a master gain to `context.destination`.
 Each bus owns a `LocalDeck` (`src/audio/LocalDeck.ts`), which plays an
 `AudioBuffer` through an `EffectsChain` (`src/audio/EffectsChain.ts`:
-low-shelf -> peaking -> high-shelf -> lowpass/highpass -> output).
+low-shelf -> peaking -> high-shelf -> lowpass/highpass -> compressor ->
+output). The compressor's "disabled" state is `ratio = 1` (mathematically
+an identity transfer function) rather than rerouting the graph around it -
+see `EffectsChain.setCompressor()`. `EffectsChain.getCompressorReduction()`
+exposes the node's live `.reduction` value (dB) for the UI meter; note some
+browsers report a small non-zero reduction even at ratio 1, so
+`CompressorPanel` clamps the displayed value to 0 when `enabled` is false
+rather than trusting the raw reading.
 
 `LocalDeck` tracks playback as a "layer" - `{ source: AudioBufferSourceNode,
 gain: GainNode }` - because `AudioBufferSourceNode`s are single-use and get
@@ -54,9 +62,10 @@ so EQ/filter settings apply equally to whichever track(s) are audible -
 there's one knob per deck, not per track.
 
 `src/state/mixerStore.ts` (Zustand) owns the `AudioEngine` and exposes
-deck-level actions (`play`, `pause`, `seek`, `setEQ`, `setCrossfade`, ...),
-polling `LocalDeck.getCurrentTime()`/`getDuration()` every 250ms
-(`startTicker`) to keep the store fresh for the UI.
+deck-level actions (`play`, `pause`, `seek`, `setEQ`, `setCompressor`,
+`setCrossfade`, ...), polling `LocalDeck.getCurrentTime()`/`getDuration()`/
+`getCompressorReduction()` every 250ms (`startTicker`) to keep the store
+fresh for the UI.
 
 ## Playlist and deck transitions
 
@@ -81,9 +90,9 @@ lives in `LocalDeck`.
 `App.tsx` renders two `Deck` components (`deckId="A"|"B"`) + `Crossfader`
 + `PlaylistPanel`. `Deck` (`src/components/Deck.tsx`) reads/writes the
 mixer store for its `deckId` and composes `Waveform`, `EQPanel`,
-`FilterPanel`, and its own local-file `<input type="file">`. EQ/filter
-controls are disabled only when the deck has no track loaded (`deck.source
-=== "empty"`).
+`FilterPanel`, `CompressorPanel`, and its own local-file
+`<input type="file">`. EQ/filter/compressor controls are disabled only when
+the deck has no track loaded (`deck.source === "empty"`).
 
 ## Working in this repo
 

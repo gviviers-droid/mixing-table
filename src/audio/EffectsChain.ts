@@ -1,10 +1,9 @@
-import type { EQSettings, FilterSettings } from "./types";
+import type { CompressorSettings, EQSettings, FilterSettings } from "./types";
 
 /**
- * Per-deck signal chain for locally-loaded audio (not available for Apple
- * Music decks, whose streams never pass through our AudioContext):
+ * Per-deck signal chain for locally-loaded audio:
  *
- *   input -> low shelf -> mid peaking -> high shelf -> filter -> output
+ *   input -> low shelf -> mid peaking -> high shelf -> filter -> compressor -> output
  */
 export class EffectsChain {
   readonly input: GainNode;
@@ -14,6 +13,7 @@ export class EffectsChain {
   private readonly mid: BiquadFilterNode;
   private readonly high: BiquadFilterNode;
   private readonly filter: BiquadFilterNode;
+  private readonly compressor: DynamicsCompressorNode;
 
   constructor(context: AudioContext) {
     this.input = context.createGain();
@@ -34,6 +34,10 @@ export class EffectsChain {
     this.filter = context.createBiquadFilter();
     this.filter.type = "allpass";
 
+    this.compressor = context.createDynamicsCompressor();
+    // ratio 1 = identity (no gain reduction), used as the "disabled" state.
+    this.compressor.ratio.value = 1;
+
     this.output = context.createGain();
 
     this.input
@@ -41,6 +45,7 @@ export class EffectsChain {
       .connect(this.mid)
       .connect(this.high)
       .connect(this.filter)
+      .connect(this.compressor)
       .connect(this.output);
   }
 
@@ -55,12 +60,23 @@ export class EffectsChain {
     this.filter.frequency.value = settings.frequency;
   }
 
+  setCompressor(settings: CompressorSettings): void {
+    this.compressor.threshold.value = settings.thresholdDb;
+    this.compressor.ratio.value = settings.enabled ? settings.ratio : 1;
+  }
+
+  /** Current gain reduction in dB (0 = no reduction happening right now). */
+  getCompressorReduction(): number {
+    return this.compressor.reduction;
+  }
+
   dispose(): void {
     this.input.disconnect();
     this.low.disconnect();
     this.mid.disconnect();
     this.high.disconnect();
     this.filter.disconnect();
+    this.compressor.disconnect();
     this.output.disconnect();
   }
 }

@@ -175,6 +175,50 @@ body {
   text-align: right;
 }
 
+.compressor-panel {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+.compressor-panel[aria-disabled="true"] {
+  opacity: 0.4;
+}
+.compressor-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+.compressor-field {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.compressor-field input[type="range"] {
+  width: 80px;
+}
+.compressor-value {
+  min-width: 3.2rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.compressor-meter {
+  flex: 1;
+  min-width: 60px;
+  height: 8px;
+  background: var(--panel-alt);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.compressor-meter-fill {
+  height: 100%;
+  background: var(--accent-b);
+  transition: width 0.1s linear;
+}
+
 .file-input {
   font-size: 0.8rem;
   color: var(--text-dim);

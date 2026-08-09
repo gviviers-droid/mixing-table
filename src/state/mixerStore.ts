@@ -1,7 +1,13 @@
 import { create } from "zustand";
 import { AudioEngine } from "../audio/AudioEngine";
-import type { DeckId, EQSettings, FilterSettings, Transition } from "../audio/types";
-import { FLAT_EQ, NO_FILTER } from "../audio/types";
+import type {
+  CompressorSettings,
+  DeckId,
+  EQSettings,
+  FilterSettings,
+  Transition,
+} from "../audio/types";
+import { DEFAULT_COMPRESSOR, FLAT_EQ, NO_FILTER } from "../audio/types";
 
 /** What a playlist item hands off to a deck when triggered. */
 export interface SendPayload {
@@ -21,6 +27,9 @@ interface DeckState {
   duration: number;
   eq: EQSettings;
   filter: FilterSettings;
+  compressor: CompressorSettings;
+  /** Current compressor gain reduction in dB, polled from the audio graph. */
+  compressorReduction: number;
   volume: number;
   waveform: AudioBuffer | null;
 }
@@ -35,6 +44,8 @@ function emptyDeck(): DeckState {
     duration: 0,
     eq: FLAT_EQ,
     filter: NO_FILTER,
+    compressor: DEFAULT_COMPRESSOR,
+    compressorReduction: 0,
     volume: 1,
     waveform: null,
   };
@@ -52,6 +63,7 @@ interface MixerState {
   seek(deck: DeckId, time: number): void;
   setEQ(deck: DeckId, eq: EQSettings): void;
   setFilter(deck: DeckId, filter: FilterSettings): void;
+  setCompressor(deck: DeckId, compressor: CompressorSettings): void;
   setDeckVolume(deck: DeckId, volume: number): void;
   setCrossfade(position: number): void;
   /** Loads a (usually preloaded) buffer into a deck, either as an instant
@@ -134,6 +146,13 @@ export const useMixerStore = create<MixerState>((set, get) => ({
     updateDeck(set, deck, { filter });
   },
 
+  setCompressor(deck, compressor) {
+    const { engine, decks } = get();
+    if (!engine || decks[deck].source !== "local") return;
+    engine.localDecks[deck].setCompressor(compressor);
+    updateDeck(set, deck, { compressor });
+  },
+
   setDeckVolume(deck, volume) {
     const { engine } = get();
     if (!engine) return;
@@ -199,6 +218,7 @@ function startTicker(
       updateDeck(set, deck, {
         currentTime: localDeck.getCurrentTime(),
         duration: localDeck.getDuration(),
+        compressorReduction: localDeck.getCompressorReduction(),
       });
     });
   }, 250);

@@ -25,6 +25,20 @@ export interface FilterSettings {
 export const FLAT_EQ: EQSettings = { low: 0, mid: 0, high: 0 };
 export const NO_FILTER: FilterSettings = { type: "none", frequency: 1000 };
 
+export interface CompressorSettings {
+  enabled: boolean;
+  /** dB, range -60..0 - level above which compression kicks in. */
+  thresholdDb: number;
+  /** 1 (no compression) .. 20 (limiting). */
+  ratio: number;
+}
+
+export const DEFAULT_COMPRESSOR: CompressorSettings = {
+  enabled: false,
+  thresholdDb: -24,
+  ratio: 4,
+};
+
 export type TransitionType = "cut" | "fade";
 
 export interface Transition {

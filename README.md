@@ -1,9 +1,9 @@
 # mixing-table
 
 A music mixing station to create your own vibe — a two-deck browser mixer
-for local audio files, with a crossfader, per-deck 3-band EQ and
-low/high-pass filter, and a preloaded playlist you can send into either
-deck with an instant cut or a real overlapping crossfade.
+for local audio files, with a crossfader, per-deck 3-band EQ, low/high-pass
+filter, and compressor/limiter, plus a preloaded playlist you can send into
+either deck with an instant cut or a real overlapping crossfade.
 
 ## Supported formats
 
