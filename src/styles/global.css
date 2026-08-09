@@ -40,28 +40,6 @@ body {
   margin: 0;
 }
 
-.auth-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.85rem;
-  color: var(--text-dim);
-}
-
-.status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--text-dim);
-}
-.status-dot[data-status="ready"] {
-  background: #6ee7a0;
-}
-
-.auth-bar button {
-  cursor: pointer;
-}
-
 .mixer {
   flex: 1;
   display: grid;
@@ -197,20 +175,6 @@ body {
   text-align: right;
 }
 
-.slot-warning {
-  font-size: 0.75rem;
-  color: var(--accent-b);
-  margin: 0;
-}
-
-.track-source {
-  border-top: 1px solid var(--border);
-  padding-top: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
 .file-input {
   font-size: 0.8rem;
   color: var(--text-dim);
@@ -219,46 +183,6 @@ body {
 .file-input input {
   display: block;
   margin-top: 0.25rem;
-}
-
-.search-form {
-  display: flex;
-  gap: 0.4rem;
-}
-.search-form input[type="text"] {
-  flex: 1;
-}
-
-.search-results {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-.search-results li + li {
-  border-top: 1px solid var(--border);
-}
-.search-results button {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  background: none;
-  border: none;
-  color: var(--text);
-  text-align: left;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.search-results button:hover {
-  background: var(--panel-alt);
-}
-.search-results img {
-  border-radius: 4px;
 }
 
 .playlist-panel {
@@ -282,16 +206,6 @@ body {
   border-bottom: 1px solid var(--border);
   padding-bottom: 0.75rem;
   margin-bottom: 0.75rem;
-  position: relative;
-}
-.playlist-add .search-results {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 1;
-  background: var(--panel);
-  margin-top: 0.25rem;
 }
 
 .playlist-items {
@@ -320,9 +234,6 @@ body {
   align-items: center;
   gap: 0.5rem;
   font-size: 0.85rem;
-}
-.playlist-item-info img {
-  border-radius: 4px;
 }
 .playlist-item-info .badge {
   margin-left: 0.4rem;

@@ -35,10 +35,7 @@ export function EQPanel({ eq, disabled, onChange }: EQPanelProps) {
         ))}
       </div>
       {disabled && (
-        <p className="eq-disabled-note">
-          EQ needs a local audio file — Apple Music streams can&apos;t be
-          filtered (DRM).
-        </p>
+        <p className="eq-disabled-note">Load a track to enable EQ.</p>
       )}
     </div>
   );

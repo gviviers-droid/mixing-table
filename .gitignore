@@ -5,6 +5,5 @@ dist-ssr
 *.local
 .env
 .env.local
-*.p8
 npm-debug.log*
 .DS_Store

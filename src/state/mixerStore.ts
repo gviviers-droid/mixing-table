@@ -2,16 +2,14 @@ import { create } from "zustand";
 import { AudioEngine } from "../audio/AudioEngine";
 import type { DeckId, EQSettings, FilterSettings, Transition } from "../audio/types";
 import { FLAT_EQ, NO_FILTER } from "../audio/types";
-import { rampDeckAudibility } from "../audio/transitions";
-import { getMusicKitInstance } from "../musickit/loadMusicKit";
-import type { Track } from "../musickit/search";
 
 /** What a playlist item hands off to a deck when triggered. */
-export type SendPayload =
-  | { source: "local"; title: string; buffer: AudioBuffer }
-  | { source: "apple-music"; track: Track };
+export interface SendPayload {
+  title: string;
+  buffer: AudioBuffer;
+}
 
-type DeckSource = "empty" | "local" | "apple-music";
+type DeckSource = "empty" | "local";
 type PlaybackState = "empty" | "loading" | "paused" | "playing";
 
 interface DeckState {
@@ -44,21 +42,21 @@ function emptyDeck(): DeckState {
 
 interface MixerState {
   engine: AudioEngine | null;
-  appleMusicSlot: DeckId | null;
   crossfade: number;
   decks: Record<DeckId, DeckState>;
-  error: string | null;
 
   ensureEngine(): Promise<AudioEngine>;
   loadLocalFile(deck: DeckId, file: File): Promise<void>;
-  loadAppleMusicTrack(deck: DeckId, track: Track): Promise<void>;
-  play(deck: DeckId): Promise<void>;
+  play(deck: DeckId): void;
   pause(deck: DeckId): void;
-  seek(deck: DeckId, time: number): Promise<void>;
+  seek(deck: DeckId, time: number): void;
   setEQ(deck: DeckId, eq: EQSettings): void;
   setFilter(deck: DeckId, filter: FilterSettings): void;
   setDeckVolume(deck: DeckId, volume: number): void;
   setCrossfade(position: number): void;
+  /** Loads a (usually preloaded) buffer into a deck, either as an instant
+   *  cut or - for `transition.type === 'fade'` - a real overlapping
+   *  crossfade with whatever the deck was already playing. */
   sendToDeck(
     deck: DeckId,
     payload: SendPayload,
@@ -70,10 +68,8 @@ let tickerStarted = false;
 
 export const useMixerStore = create<MixerState>((set, get) => ({
   engine: null,
-  appleMusicSlot: null,
   crossfade: 0.5,
   decks: { A: emptyDeck(), B: emptyDeck() },
-  error: null,
 
   async ensureEngine() {
     let { engine } = get();
@@ -88,7 +84,6 @@ export const useMixerStore = create<MixerState>((set, get) => ({
 
   async loadLocalFile(deck, file) {
     const engine = await get().ensureEngine();
-    await stopDeckContent(deck, engine, get, set);
     updateDeck(set, deck, {
       ...emptyDeck(),
       source: "local",
@@ -104,70 +99,24 @@ export const useMixerStore = create<MixerState>((set, get) => ({
     });
   },
 
-  async loadAppleMusicTrack(deck, track) {
-    const engine = await get().ensureEngine();
-    const instance = await getMusicKitInstance();
-    await stopDeckContent(deck, engine, get, set);
-    const previousHolder = get().appleMusicSlot;
-
-    if (previousHolder && previousHolder !== deck) {
-      instance.stop();
-      updateDeck(set, previousHolder, {
-        ...emptyDeck(),
-      });
-    }
-
-    set({ appleMusicSlot: deck });
-    updateDeck(set, deck, {
-      ...emptyDeck(),
-      source: "apple-music",
-      title: track.title,
-      artist: track.artist,
-      playbackState: "loading",
-      duration: (track.durationMs ?? 0) / 1000,
-    });
-
-    await instance.setQueue({ song: track.id });
-    instance.volume = engine.getEffectiveGain(deck);
-    updateDeck(set, deck, { playbackState: "paused" });
-  },
-
-  async play(deck) {
-    const engine = await get().ensureEngine();
-    const deckState = get().decks[deck];
-    if (deckState.source === "local") {
-      engine.localDecks[deck].play();
-      updateDeck(set, deck, { playbackState: "playing" });
-    } else if (deckState.source === "apple-music" && get().appleMusicSlot === deck) {
-      const instance = await getMusicKitInstance();
-      await instance.play();
-      updateDeck(set, deck, { playbackState: "playing" });
-    }
+  play(deck) {
+    const { engine, decks } = get();
+    if (!engine || decks[deck].source !== "local") return;
+    engine.localDecks[deck].play();
+    updateDeck(set, deck, { playbackState: "playing" });
   },
 
   pause(deck) {
-    const { engine, decks, appleMusicSlot } = get();
-    if (!engine) return;
-    const deckState = decks[deck];
-    if (deckState.source === "local") {
-      engine.localDecks[deck].pause();
-      updateDeck(set, deck, { playbackState: "paused" });
-    } else if (deckState.source === "apple-music" && appleMusicSlot === deck) {
-      getMusicKitInstance().then((instance) => instance.pause());
-      updateDeck(set, deck, { playbackState: "paused" });
-    }
+    const { engine, decks } = get();
+    if (!engine || decks[deck].source !== "local") return;
+    engine.localDecks[deck].pause();
+    updateDeck(set, deck, { playbackState: "paused" });
   },
 
-  async seek(deck, time) {
-    const { engine, decks, appleMusicSlot } = get();
-    if (!engine) return;
-    const deckState = decks[deck];
-    if (deckState.source === "local") {
-      engine.localDecks[deck].seek(time);
-    } else if (deckState.source === "apple-music" && appleMusicSlot === deck) {
-      const instance = await getMusicKitInstance();
-      await instance.seekToTime(time);
-    }
+  seek(deck, time) {
+    const { engine, decks } = get();
+    if (!engine || decks[deck].source !== "local") return;
+    engine.localDecks[deck].seek(time);
     updateDeck(set, deck, { currentTime: time });
   },
 
@@ -186,59 +135,39 @@ export const useMixerStore = create<MixerState>((set, get) => ({
   },
 
   setDeckVolume(deck, volume) {
-    const { engine, appleMusicSlot } = get();
+    const { engine } = get();
     if (!engine) return;
     engine.setDeckVolume(deck, volume);
     updateDeck(set, deck, { volume });
-    syncAppleMusicVolume(engine, appleMusicSlot);
   },
 
   setCrossfade(position) {
-    const { engine, appleMusicSlot } = get();
+    const { engine } = get();
     set({ crossfade: position });
-    if (!engine) return;
-    engine.setCrossfade(position);
-    syncAppleMusicVolume(engine, appleMusicSlot);
+    engine?.setCrossfade(position);
   },
 
   async sendToDeck(deck, payload, transition) {
     const engine = await get().ensureEngine();
+    const localDeck = engine.localDecks[deck];
     const hasExisting = get().decks[deck].source !== "empty";
-    const doFade = transition.type === "fade" && hasExisting;
-    const halfMs = (transition.durationSec * 1000) / 2;
 
-    if (doFade) {
-      const outgoingInstance =
-        get().appleMusicSlot === deck ? await getMusicKitInstance() : null;
-      await rampDeckAudibility(engine, deck, 1, 0, halfMs, outgoingInstance);
-    }
-
-    if (payload.source === "local") {
-      await stopDeckContent(deck, engine, get, set);
-      if (doFade) engine.setTransitionMultiplier(deck, 0);
-      engine.localDecks[deck].loadBuffer(payload.buffer);
-      updateDeck(set, deck, {
-        ...emptyDeck(),
-        source: "local",
-        title: payload.title,
-        artist: "Local file",
-        duration: engine.localDecks[deck].getDuration(),
-        waveform: payload.buffer,
-      });
-      engine.localDecks[deck].play();
-      updateDeck(set, deck, { playbackState: "playing" });
+    if (transition.type === "fade" && hasExisting) {
+      localDeck.crossfadeTo(payload.buffer, transition.durationSec);
     } else {
-      if (doFade) engine.setTransitionMultiplier(deck, 0);
-      await get().loadAppleMusicTrack(deck, payload.track);
-      await get().play(deck);
+      localDeck.loadBuffer(payload.buffer);
+      localDeck.play();
     }
 
-    if (doFade) {
-      const incomingInstance =
-        get().appleMusicSlot === deck ? await getMusicKitInstance() : null;
-      await rampDeckAudibility(engine, deck, 0, 1, halfMs, incomingInstance);
-      engine.setTransitionMultiplier(deck, 1);
-    }
+    updateDeck(set, deck, {
+      ...emptyDeck(),
+      source: "local",
+      title: payload.title,
+      artist: "Local file",
+      playbackState: "playing",
+      duration: localDeck.getDuration(),
+      waveform: payload.buffer,
+    });
   },
 }));
 
@@ -252,34 +181,7 @@ function updateDeck(
   }));
 }
 
-/** Stops whatever pipeline (local or Apple Music) is currently active on a deck. */
-async function stopDeckContent(
-  deck: DeckId,
-  engine: AudioEngine,
-  get: () => MixerState,
-  set: (fn: (state: MixerState) => Partial<MixerState>) => void,
-): Promise<void> {
-  const source = get().decks[deck].source;
-  if (source === "local") {
-    engine.localDecks[deck].pause();
-  } else if (source === "apple-music" && get().appleMusicSlot === deck) {
-    const instance = await getMusicKitInstance();
-    instance.stop();
-    set(() => ({ appleMusicSlot: null }));
-  }
-}
-
-function syncAppleMusicVolume(
-  engine: AudioEngine,
-  appleMusicSlot: DeckId | null,
-): void {
-  if (!appleMusicSlot) return;
-  getMusicKitInstance().then((instance) => {
-    instance.volume = engine.getEffectiveGain(appleMusicSlot);
-  });
-}
-
-/** Polls playback position/state from the engine and MusicKit into the store. */
+/** Polls playback position/duration from the engine into the store. */
 function startTicker(
   get: () => MixerState,
   set: (fn: (state: MixerState) => Partial<MixerState>) => void,
@@ -288,27 +190,16 @@ function startTicker(
   tickerStarted = true;
 
   setInterval(() => {
-    const { engine, decks, appleMusicSlot } = get();
+    const { engine, decks } = get();
     if (!engine) return;
 
     (["A", "B"] as DeckId[]).forEach((deck) => {
-      const deckState = decks[deck];
-      if (deckState.source === "local") {
-        const localDeck = engine.localDecks[deck];
-        updateDeck(set, deck, {
-          currentTime: localDeck.getCurrentTime(),
-          duration: localDeck.getDuration(),
-        });
-      } else if (deckState.source === "apple-music" && appleMusicSlot === deck) {
-        getMusicKitInstance().then((instance) => {
-          updateDeck(set, deck, {
-            currentTime: instance.currentPlaybackTime,
-            duration: instance.currentPlaybackDuration || deckState.duration,
-            playbackState:
-              instance.playbackState === "playing" ? "playing" : "paused",
-          });
-        });
-      }
+      if (decks[deck].source !== "local") return;
+      const localDeck = engine.localDecks[deck];
+      updateDeck(set, deck, {
+        currentTime: localDeck.getCurrentTime(),
+        duration: localDeck.getDuration(),
+      });
     });
   }, 250);
 }

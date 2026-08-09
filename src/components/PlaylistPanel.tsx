@@ -1,38 +1,15 @@
-import { useState, type ChangeEvent, type FormEvent } from "react";
+import type { ChangeEvent } from "react";
 import type { DeckId, TransitionType } from "../audio/types";
-import { searchCatalog, searchLibrary, type Track } from "../musickit/search";
 import { usePlaylistStore } from "../state/playlistStore";
 
-interface PlaylistPanelProps {
-  isAuthorized: boolean;
-}
-
-export function PlaylistPanel({ isAuthorized }: PlaylistPanelProps) {
+export function PlaylistPanel() {
   const items = usePlaylistStore((s) => s.items);
   const addLocalFile = usePlaylistStore((s) => s.addLocalFile);
-  const addAppleMusicTrack = usePlaylistStore((s) => s.addAppleMusicTrack);
   const removeItem = usePlaylistStore((s) => s.removeItem);
   const setTargetDeck = usePlaylistStore((s) => s.setTargetDeck);
   const setTransition = usePlaylistStore((s) => s.setTransition);
   const moveItem = usePlaylistStore((s) => s.moveItem);
   const send = usePlaylistStore((s) => s.send);
-
-  const [term, setTerm] = useState("");
-  const [scope, setScope] = useState<"catalog" | "library">("catalog");
-  const [results, setResults] = useState<Track[]>([]);
-  const [searching, setSearching] = useState(false);
-
-  async function runSearch(e: FormEvent) {
-    e.preventDefault();
-    setSearching(true);
-    try {
-      const tracks =
-        scope === "library" ? await searchLibrary(term) : await searchCatalog(term);
-      setResults(tracks);
-    } finally {
-      setSearching(false);
-    }
-  }
 
   function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -49,75 +26,22 @@ export function PlaylistPanel({ isAuthorized }: PlaylistPanelProps) {
           Add local file
           <input type="file" accept="audio/*" onChange={handleFileChange} />
         </label>
-
-        <form className="search-form" onSubmit={runSearch}>
-          <select
-            value={scope}
-            onChange={(e) => setScope(e.target.value as "catalog" | "library")}
-          >
-            <option value="catalog">Apple Music catalog</option>
-            <option value="library" disabled={!isAuthorized}>
-              My library {isAuthorized ? "" : "(sign in required)"}
-            </option>
-          </select>
-          <input
-            type="text"
-            placeholder="Search songs to add…"
-            value={term}
-            onChange={(e) => setTerm(e.target.value)}
-          />
-          <button type="submit" disabled={searching || !term.trim()}>
-            {searching ? "…" : "Search"}
-          </button>
-        </form>
-
-        {results.length > 0 && (
-          <ul className="search-results">
-            {results.map((track) => (
-              <li key={track.id}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    addAppleMusicTrack(track);
-                    setResults([]);
-                    setTerm("");
-                  }}
-                >
-                  {track.artworkUrl && (
-                    <img src={track.artworkUrl} alt="" width={32} height={32} />
-                  )}
-                  <span>
-                    <strong>{track.title}</strong>
-                    <br />
-                    {track.artist}
-                  </span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
       </div>
 
       {items.length === 0 ? (
         <p className="empty-hint">
-          Add local files or Apple Music tracks above to build a playlist you
-          can send into either deck.
+          Add local audio files above to build a playlist you can preload and
+          send into either deck.
         </p>
       ) : (
         <ul className="playlist-items">
           {items.map((item, index) => (
             <li key={item.id} className="playlist-item">
               <div className="playlist-item-info">
-                {item.artworkUrl && (
-                  <img src={item.artworkUrl} alt="" width={32} height={32} />
-                )}
                 <span>
                   <strong>{item.title}</strong>
                   <br />
                   {item.artist}
-                  {item.source === "apple-music" && (
-                    <span className="badge">Apple Music</span>
-                  )}
                   {item.status === "decoding" && (
                     <span className="badge">Preloading…</span>
                   )}

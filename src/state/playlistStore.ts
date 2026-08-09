@@ -1,7 +1,6 @@
 import { create } from "zustand";
 import type { DeckId, Transition } from "../audio/types";
 import { DEFAULT_TRANSITION } from "../audio/types";
-import type { Track } from "../musickit/search";
 import { useMixerStore } from "./mixerStore";
 
 type ItemStatus = "decoding" | "ready" | "error";
@@ -10,10 +9,7 @@ export interface PlaylistItem {
   id: string;
   title: string;
   artist: string;
-  artworkUrl?: string;
-  source: "local" | "apple-music";
-  track?: Track;
-  buffer?: AudioBuffer | null;
+  buffer: AudioBuffer | null;
   status: ItemStatus;
   targetDeck: DeckId;
   transition: Transition;
@@ -22,7 +18,6 @@ export interface PlaylistItem {
 interface PlaylistState {
   items: PlaylistItem[];
   addLocalFile(file: File): Promise<void>;
-  addAppleMusicTrack(track: Track): void;
   removeItem(id: string): void;
   setTargetDeck(id: string, deck: DeckId): void;
   setTransition(id: string, transition: Transition): void;
@@ -46,7 +41,6 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
           id,
           title: file.name,
           artist: "Local file",
-          source: "local",
           buffer: null,
           status: "decoding",
           targetDeck: "A",
@@ -70,25 +64,6 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
         ),
       }));
     }
-  },
-
-  addAppleMusicTrack(track) {
-    set((state) => ({
-      items: [
-        ...state.items,
-        {
-          id: newId(),
-          title: track.title,
-          artist: track.artist,
-          artworkUrl: track.artworkUrl,
-          source: "apple-music",
-          track,
-          status: "ready",
-          targetDeck: "A",
-          transition: DEFAULT_TRANSITION,
-        },
-      ],
-    }));
   },
 
   removeItem(id) {
@@ -126,24 +101,13 @@ export const usePlaylistStore = create<PlaylistState>((set, get) => ({
 
   async send(id) {
     const item = get().items.find((i) => i.id === id);
-    if (!item || item.status !== "ready") return;
-
-    if (item.source === "local" && item.buffer) {
-      await useMixerStore
-        .getState()
-        .sendToDeck(
-          item.targetDeck,
-          { source: "local", title: item.title, buffer: item.buffer },
-          item.transition,
-        );
-    } else if (item.source === "apple-music" && item.track) {
-      await useMixerStore
-        .getState()
-        .sendToDeck(
-          item.targetDeck,
-          { source: "apple-music", track: item.track },
-          item.transition,
-        );
-    }
+    if (!item || item.status !== "ready" || !item.buffer) return;
+    await useMixerStore
+      .getState()
+      .sendToDeck(
+        item.targetDeck,
+        { title: item.title, buffer: item.buffer },
+        item.transition,
+      );
   },
 }));
