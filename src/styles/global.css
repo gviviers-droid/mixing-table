@@ -175,7 +175,7 @@ body {
   text-align: right;
 }
 
-.compressor-panel {
+.fx-panel {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -183,24 +183,24 @@ body {
   font-size: 0.8rem;
   color: var(--text-dim);
 }
-.compressor-panel[aria-disabled="true"] {
+.fx-panel[aria-disabled="true"] {
   opacity: 0.4;
 }
-.compressor-toggle {
+.fx-toggle {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   cursor: pointer;
 }
-.compressor-field {
+.fx-field {
   display: flex;
   align-items: center;
   gap: 0.4rem;
 }
-.compressor-field input[type="range"] {
+.fx-field input[type="range"] {
   width: 80px;
 }
-.compressor-value {
+.fx-value {
   min-width: 3.2rem;
   text-align: right;
   font-variant-numeric: tabular-nums;

@@ -3,8 +3,10 @@ import type { DeckId } from "../audio/types";
 import { useMixerStore } from "../state/mixerStore";
 import { formatTime } from "../utils/formatTime";
 import { CompressorPanel } from "./CompressorPanel";
+import { DelayPanel } from "./DelayPanel";
 import { EQPanel } from "./EQPanel";
 import { FilterPanel } from "./FilterPanel";
+import { ReverbPanel } from "./ReverbPanel";
 import { Waveform } from "./Waveform";
 
 interface DeckProps {
@@ -19,6 +21,8 @@ export function Deck({ deckId }: DeckProps) {
   const seek = useMixerStore((s) => s.seek);
   const setEQ = useMixerStore((s) => s.setEQ);
   const setFilter = useMixerStore((s) => s.setFilter);
+  const setReverb = useMixerStore((s) => s.setReverb);
+  const setDelay = useMixerStore((s) => s.setDelay);
   const setCompressor = useMixerStore((s) => s.setCompressor);
   const setDeckVolume = useMixerStore((s) => s.setDeckVolume);
 
@@ -92,6 +96,16 @@ export function Deck({ deckId }: DeckProps) {
         filter={deck.filter}
         disabled={!hasTrack}
         onChange={(filter) => setFilter(deckId, filter)}
+      />
+      <ReverbPanel
+        reverb={deck.reverb}
+        disabled={!hasTrack}
+        onChange={(reverb) => setReverb(deckId, reverb)}
+      />
+      <DelayPanel
+        delay={deck.delay}
+        disabled={!hasTrack}
+        onChange={(delay) => setDelay(deckId, delay)}
       />
       <CompressorPanel
         compressor={deck.compressor}

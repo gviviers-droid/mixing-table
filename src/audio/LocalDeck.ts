@@ -1,6 +1,12 @@
 import { EffectsChain } from "./EffectsChain";
-import type { CompressorSettings, EQSettings, FilterSettings } from "./types";
-import { DEFAULT_COMPRESSOR, FLAT_EQ, NO_FILTER } from "./types";
+import type {
+  CompressorSettings,
+  DelaySettings,
+  EQSettings,
+  FilterSettings,
+  ReverbSettings,
+} from "./types";
+import { DEFAULT_COMPRESSOR, DEFAULT_DELAY, DEFAULT_REVERB, FLAT_EQ, NO_FILTER } from "./types";
 
 export type LocalDeckPlaybackState = "empty" | "loading" | "paused" | "playing";
 
@@ -140,6 +146,14 @@ export class LocalDeck {
 
   setCompressor(compressor: CompressorSettings = DEFAULT_COMPRESSOR): void {
     this.effects.setCompressor(compressor);
+  }
+
+  setReverb(reverb: ReverbSettings = DEFAULT_REVERB): void {
+    this.effects.setReverb(reverb);
+  }
+
+  setDelay(delay: DelaySettings = DEFAULT_DELAY): void {
+    this.effects.setDelay(delay);
   }
 
   getCompressorReduction(): number {

@@ -22,8 +22,8 @@ export function CompressorPanel({
   const meterPercent = Math.min(100, (Math.abs(effectiveReduction) / METER_RANGE_DB) * 100);
 
   return (
-    <div className="compressor-panel" aria-disabled={disabled}>
-      <label className="compressor-toggle">
+    <div className="fx-panel" aria-disabled={disabled}>
+      <label className="fx-toggle">
         <input
           type="checkbox"
           checked={compressor.enabled}
@@ -33,7 +33,7 @@ export function CompressorPanel({
         Compressor
       </label>
 
-      <label className="compressor-field">
+      <label className="fx-field">
         <span>Threshold</span>
         <input
           type="range"
@@ -46,10 +46,10 @@ export function CompressorPanel({
             onChange({ ...compressor, thresholdDb: Number(e.target.value) })
           }
         />
-        <span className="compressor-value">{compressor.thresholdDb} dB</span>
+        <span className="fx-value">{compressor.thresholdDb} dB</span>
       </label>
 
-      <label className="compressor-field">
+      <label className="fx-field">
         <span>Ratio</span>
         <input
           type="range"
@@ -62,7 +62,7 @@ export function CompressorPanel({
             onChange({ ...compressor, ratio: Number(e.target.value) })
           }
         />
-        <span className="compressor-value">{compressor.ratio}:1</span>
+        <span className="fx-value">{compressor.ratio}:1</span>
       </label>
 
       <div

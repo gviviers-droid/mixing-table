@@ -39,6 +39,43 @@ export const DEFAULT_COMPRESSOR: CompressorSettings = {
   ratio: 4,
 };
 
+export interface ReverbSettings {
+  enabled: boolean;
+  /** 0..1 wet mix. */
+  mix: number;
+  /** Seconds, 0.1..8 - length of the generated impulse response. */
+  decaySeconds: number;
+  /** Milliseconds, 0..1000. */
+  preDelayMs: number;
+}
+
+export const DEFAULT_REVERB: ReverbSettings = {
+  enabled: false,
+  mix: 0.3,
+  decaySeconds: 2.2,
+  preDelayMs: 20,
+};
+
+export interface DelaySettings {
+  enabled: boolean;
+  /** 0..1 wet mix. */
+  mix: number;
+  /** Milliseconds, 1..2000. */
+  timeMs: number;
+  /** 0..0.9 - feedback loop gain. */
+  feedback: number;
+  /** Hz, 200..18000 - lowpass filter in the feedback loop so repeats darken over time. */
+  toneHz: number;
+}
+
+export const DEFAULT_DELAY: DelaySettings = {
+  enabled: false,
+  mix: 0.25,
+  timeMs: 300,
+  feedback: 0.35,
+  toneHz: 4000,
+};
+
 export type TransitionType = "cut" | "fade";
 
 export interface Transition {

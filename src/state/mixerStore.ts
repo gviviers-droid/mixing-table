@@ -3,11 +3,19 @@ import { AudioEngine } from "../audio/AudioEngine";
 import type {
   CompressorSettings,
   DeckId,
+  DelaySettings,
   EQSettings,
   FilterSettings,
+  ReverbSettings,
   Transition,
 } from "../audio/types";
-import { DEFAULT_COMPRESSOR, FLAT_EQ, NO_FILTER } from "../audio/types";
+import {
+  DEFAULT_COMPRESSOR,
+  DEFAULT_DELAY,
+  DEFAULT_REVERB,
+  FLAT_EQ,
+  NO_FILTER,
+} from "../audio/types";
 
 /** What a playlist item hands off to a deck when triggered. */
 export interface SendPayload {
@@ -27,6 +35,8 @@ interface DeckState {
   duration: number;
   eq: EQSettings;
   filter: FilterSettings;
+  reverb: ReverbSettings;
+  delay: DelaySettings;
   compressor: CompressorSettings;
   /** Current compressor gain reduction in dB, polled from the audio graph. */
   compressorReduction: number;
@@ -44,6 +54,8 @@ function emptyDeck(): DeckState {
     duration: 0,
     eq: FLAT_EQ,
     filter: NO_FILTER,
+    reverb: DEFAULT_REVERB,
+    delay: DEFAULT_DELAY,
     compressor: DEFAULT_COMPRESSOR,
     compressorReduction: 0,
     volume: 1,
@@ -63,6 +75,8 @@ interface MixerState {
   seek(deck: DeckId, time: number): void;
   setEQ(deck: DeckId, eq: EQSettings): void;
   setFilter(deck: DeckId, filter: FilterSettings): void;
+  setReverb(deck: DeckId, reverb: ReverbSettings): void;
+  setDelay(deck: DeckId, delay: DelaySettings): void;
   setCompressor(deck: DeckId, compressor: CompressorSettings): void;
   setDeckVolume(deck: DeckId, volume: number): void;
   setCrossfade(position: number): void;
@@ -144,6 +158,20 @@ export const useMixerStore = create<MixerState>((set, get) => ({
     if (!engine || decks[deck].source !== "local") return;
     engine.localDecks[deck].setFilter(filter);
     updateDeck(set, deck, { filter });
+  },
+
+  setReverb(deck, reverb) {
+    const { engine, decks } = get();
+    if (!engine || decks[deck].source !== "local") return;
+    engine.localDecks[deck].setReverb(reverb);
+    updateDeck(set, deck, { reverb });
+  },
+
+  setDelay(deck, delay) {
+    const { engine, decks } = get();
+    if (!engine || decks[deck].source !== "local") return;
+    engine.localDecks[deck].setDelay(delay);
+    updateDeck(set, deck, { delay });
   },
 
   setCompressor(deck, compressor) {
