@@ -24,3 +24,13 @@ export interface FilterSettings {
 
 export const FLAT_EQ: EQSettings = { low: 0, mid: 0, high: 0 };
 export const NO_FILTER: FilterSettings = { type: "none", frequency: 1000 };
+
+export type TransitionType = "cut" | "fade";
+
+export interface Transition {
+  type: TransitionType;
+  /** Total transition length in seconds (fade-out + fade-in each get half). */
+  durationSec: number;
+}
+
+export const DEFAULT_TRANSITION: Transition = { type: "fade", durationSec: 3 };

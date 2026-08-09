@@ -1,6 +1,7 @@
 import { AuthBar } from "./components/AuthBar";
 import { Crossfader } from "./components/Crossfader";
 import { Deck } from "./components/Deck";
+import { PlaylistPanel } from "./components/PlaylistPanel";
 import { useMusicKit } from "./musickit/useMusicKit";
 
 export default function App() {
@@ -18,6 +19,8 @@ export default function App() {
         <Crossfader />
         <Deck deckId="B" isAuthorized={isAuthorized} />
       </main>
+
+      <PlaylistPanel isAuthorized={isAuthorized} />
     </div>
   );
 }

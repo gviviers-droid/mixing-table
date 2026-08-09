@@ -2,7 +2,8 @@
 
 A music mixing station to create your own vibe — a two-deck browser mixer
 that plays tracks from your Apple Music library or local audio files, with
-a crossfader and per-deck EQ/filter effects.
+a crossfader, per-deck EQ/filter effects, and a preloaded playlist you can
+send into either deck with a cut or a fade.
 
 ## Important: what you can and can't do with Apple Music audio
 

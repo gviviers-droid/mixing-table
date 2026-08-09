@@ -42,6 +42,14 @@ export class LocalDeck {
     this.state = "paused";
   }
 
+  /** Adopts an already-decoded buffer (e.g. a preloaded playlist item) without re-decoding. */
+  loadBuffer(buffer: AudioBuffer): void {
+    this.stopSource();
+    this.offset = 0;
+    this.buffer = buffer;
+    this.state = "paused";
+  }
+
   play(): void {
     if (!this.buffer || this.state === "playing") return;
     const source = this.context.createBufferSource();

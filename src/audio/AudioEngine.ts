@@ -22,6 +22,10 @@ export class AudioEngine {
   private readonly master: GainNode;
   private crossfadePosition = 0.5;
   private deckVolume: Record<DeckId, number> = { A: 1, B: 1 };
+  /** 0..1 multiplier layered on top of the normal crossfade/volume math,
+   *  used to fade a deck out/in during a playlist transition without
+   *  disturbing the user's actual crossfader/volume settings. */
+  private transitionMultiplier: Record<DeckId, number> = { A: 1, B: 1 };
 
   constructor() {
     this.context = new AudioContext();
@@ -69,7 +73,21 @@ export class AudioEngine {
   getEffectiveGain(deck: DeckId): number {
     const { a, b } = crossfadeGains(this.crossfadePosition);
     const curve = deck === "A" ? a : b;
-    return curve * this.deckVolume[deck];
+    return curve * this.deckVolume[deck] * this.transitionMultiplier[deck];
+  }
+
+  /** Drives the fade-out/fade-in steps of a playlist transition (see
+   *  mixerStore.sendToDeck). Set back to 1 once a transition completes. */
+  setTransitionMultiplier(deck: DeckId, value: number): void {
+    this.transitionMultiplier[deck] = Math.max(0, Math.min(1, value));
+    this.applyCrossfade();
+  }
+
+  /** Decodes a file into an AudioBuffer without touching any deck - used to
+   *  preload playlist items ahead of time. */
+  async decodeFile(file: File): Promise<AudioBuffer> {
+    const arrayBuffer = await file.arrayBuffer();
+    return this.context.decodeAudioData(arrayBuffer);
   }
 
   dispose(): void {
@@ -83,7 +101,7 @@ export class AudioEngine {
 
   private applyCrossfade(): void {
     const { a, b } = crossfadeGains(this.crossfadePosition);
-    this.deckBus.A.gain.value = a * this.deckVolume.A;
-    this.deckBus.B.gain.value = b * this.deckVolume.B;
+    this.deckBus.A.gain.value = a * this.deckVolume.A * this.transitionMultiplier.A;
+    this.deckBus.B.gain.value = b * this.deckVolume.B * this.transitionMultiplier.B;
   }
 }

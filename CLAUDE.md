@@ -90,11 +90,45 @@ action routes through.
 ## UI structure
 
 `App.tsx` renders `AuthBar` + two `Deck` components (`deckId="A"|"B"`) +
-`Crossfader`. `Deck` (`src/components/Deck.tsx`) reads/writes the mixer
-store for its `deckId` and composes `Waveform`, `EQPanel`, `FilterPanel`,
-and `TrackSource` (file picker + Apple Music search box). EQ/filter
-controls are disabled (not hidden) when a deck's source isn't `'local'`, so
-the DRM constraint stays visible rather than silently absent.
+`Crossfader` + `PlaylistPanel`. `Deck` (`src/components/Deck.tsx`)
+reads/writes the mixer store for its `deckId` and composes `Waveform`,
+`EQPanel`, `FilterPanel`, and `TrackSource` (file picker + Apple Music
+search box, loads directly into that deck). EQ/filter controls are
+disabled (not hidden) when a deck's source isn't `'local'`, so the DRM
+constraint stays visible rather than silently absent.
+
+## Playlist and deck transitions
+
+`src/state/playlistStore.ts` holds a preloaded queue independent of either
+deck: local files are decoded into an `AudioBuffer` immediately on add
+(`AudioEngine.decodeFile`) so sending one to a deck later is instant;
+Apple Music items just carry the `Track` metadata since there's nothing to
+predecode for a stream. Each item has a `targetDeck` preset and a
+`Transition` (`{ type: 'cut' | 'fade', durationSec }`, `src/audio/types.ts`).
+`PlaylistPanel` is where items are added/reordered/sent; it never touches
+the audio graph directly, only `usePlaylistStore`.
+
+Triggering an item (`playlistStore.send` -> `mixerStore.sendToDeck`) is the
+one place that swaps a deck's content programmatically rather than through
+direct user load/play. For `'cut'` it's an immediate replace. For `'fade'`
+it ramps the deck's own output down, swaps content, then ramps back up -
+implemented via `AudioEngine.transitionMultiplier` (a per-deck 0..1
+multiplier layered into the existing crossfade-gain math in
+`applyCrossfade()`/`getEffectiveGain()`) and `rampDeckAudibility()`
+(`src/audio/transitions.ts`, a `requestAnimationFrame` loop). This is a
+**sequential** fade (dip to silence, swap, rise back up), not a true
+overlapping dual-audio crossfade: local-to-local *could* overlap two real
+Web Audio sources, but Apple Music can't overlap itself (singleton, see
+above), and using one consistent mechanism for every source combination
+keeps the code and the UX predictable. If you ever add true overlapping
+local-to-local crossfades, it has to be a separate code path - don't try to
+force it through `transitionMultiplier`, which assumes one active source
+per deck.
+
+Note `sendToDeck` reuses `loadAppleMusicTrack`/`stopDeckContent` for the
+Apple Music case, so the existing "stealing the shared slot stops the
+*other* deck instantly" behavior applies there too - only the deck actually
+receiving the playlist item gets fade treatment for its own transition.
 
 ## Working in this repo
 

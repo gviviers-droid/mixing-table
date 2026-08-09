@@ -1,9 +1,15 @@
 import { create } from "zustand";
 import { AudioEngine } from "../audio/AudioEngine";
-import type { DeckId, EQSettings, FilterSettings } from "../audio/types";
+import type { DeckId, EQSettings, FilterSettings, Transition } from "../audio/types";
 import { FLAT_EQ, NO_FILTER } from "../audio/types";
+import { rampDeckAudibility } from "../audio/transitions";
 import { getMusicKitInstance } from "../musickit/loadMusicKit";
 import type { Track } from "../musickit/search";
+
+/** What a playlist item hands off to a deck when triggered. */
+export type SendPayload =
+  | { source: "local"; title: string; buffer: AudioBuffer }
+  | { source: "apple-music"; track: Track };
 
 type DeckSource = "empty" | "local" | "apple-music";
 type PlaybackState = "empty" | "loading" | "paused" | "playing";
@@ -53,6 +59,11 @@ interface MixerState {
   setFilter(deck: DeckId, filter: FilterSettings): void;
   setDeckVolume(deck: DeckId, volume: number): void;
   setCrossfade(position: number): void;
+  sendToDeck(
+    deck: DeckId,
+    payload: SendPayload,
+    transition: Transition,
+  ): Promise<void>;
 }
 
 let tickerStarted = false;
@@ -77,7 +88,7 @@ export const useMixerStore = create<MixerState>((set, get) => ({
 
   async loadLocalFile(deck, file) {
     const engine = await get().ensureEngine();
-    await releaseAppleMusicSlotIfHeld(deck, get, set);
+    await stopDeckContent(deck, engine, get, set);
     updateDeck(set, deck, {
       ...emptyDeck(),
       source: "local",
@@ -96,6 +107,7 @@ export const useMixerStore = create<MixerState>((set, get) => ({
   async loadAppleMusicTrack(deck, track) {
     const engine = await get().ensureEngine();
     const instance = await getMusicKitInstance();
+    await stopDeckContent(deck, engine, get, set);
     const previousHolder = get().appleMusicSlot;
 
     if (previousHolder && previousHolder !== deck) {
@@ -188,6 +200,46 @@ export const useMixerStore = create<MixerState>((set, get) => ({
     engine.setCrossfade(position);
     syncAppleMusicVolume(engine, appleMusicSlot);
   },
+
+  async sendToDeck(deck, payload, transition) {
+    const engine = await get().ensureEngine();
+    const hasExisting = get().decks[deck].source !== "empty";
+    const doFade = transition.type === "fade" && hasExisting;
+    const halfMs = (transition.durationSec * 1000) / 2;
+
+    if (doFade) {
+      const outgoingInstance =
+        get().appleMusicSlot === deck ? await getMusicKitInstance() : null;
+      await rampDeckAudibility(engine, deck, 1, 0, halfMs, outgoingInstance);
+    }
+
+    if (payload.source === "local") {
+      await stopDeckContent(deck, engine, get, set);
+      if (doFade) engine.setTransitionMultiplier(deck, 0);
+      engine.localDecks[deck].loadBuffer(payload.buffer);
+      updateDeck(set, deck, {
+        ...emptyDeck(),
+        source: "local",
+        title: payload.title,
+        artist: "Local file",
+        duration: engine.localDecks[deck].getDuration(),
+        waveform: payload.buffer,
+      });
+      engine.localDecks[deck].play();
+      updateDeck(set, deck, { playbackState: "playing" });
+    } else {
+      if (doFade) engine.setTransitionMultiplier(deck, 0);
+      await get().loadAppleMusicTrack(deck, payload.track);
+      await get().play(deck);
+    }
+
+    if (doFade) {
+      const incomingInstance =
+        get().appleMusicSlot === deck ? await getMusicKitInstance() : null;
+      await rampDeckAudibility(engine, deck, 0, 1, halfMs, incomingInstance);
+      engine.setTransitionMultiplier(deck, 1);
+    }
+  },
 }));
 
 function updateDeck(
@@ -200,15 +252,21 @@ function updateDeck(
   }));
 }
 
-async function releaseAppleMusicSlotIfHeld(
+/** Stops whatever pipeline (local or Apple Music) is currently active on a deck. */
+async function stopDeckContent(
   deck: DeckId,
+  engine: AudioEngine,
   get: () => MixerState,
   set: (fn: (state: MixerState) => Partial<MixerState>) => void,
 ): Promise<void> {
-  if (get().appleMusicSlot !== deck) return;
-  const instance = await getMusicKitInstance();
-  instance.stop();
-  set(() => ({ appleMusicSlot: null }));
+  const source = get().decks[deck].source;
+  if (source === "local") {
+    engine.localDecks[deck].pause();
+  } else if (source === "apple-music" && get().appleMusicSlot === deck) {
+    const instance = await getMusicKitInstance();
+    instance.stop();
+    set(() => ({ appleMusicSlot: null }));
+  }
 }
 
 function syncAppleMusicVolume(
